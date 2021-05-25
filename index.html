@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>行权</title>
+    <style>
+      table,
+      th,
+      td {
+        border: 1px solid #333;
+      }
+      table {
+        border-spacing: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <table>
+      <thead>
+        <tr>
+          <td>参数名</td>
+          <td>描述</td>
+          <td>默认值</td>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>exchangeRate</td>
+          <td>换算成人民币的汇率</td>
+          <td>6.4(美元:人民币)</td>
+        </tr>
+        <tr>
+          <td>minCount</td>
+          <td>最少兑换期权数</td>
+          <td>1000</td>
+        </tr>
+        <tr>
+          <td>maxCount</td>
+          <td>最多兑换期权数</td>
+          <td>10000</td>
+        </tr>
+        <tr>
+          <td>countStep</td>
+          <td>步长</td>
+          <td>100</td>
+        </tr>
+        <tr>
+          <td>minUnit</td>
+          <td>最小单价</td>
+          <td>10</td>
+        </tr>
+        <tr>
+          <td>maxUnit</td>
+          <td>最大单价</td>
+          <td>100</td>
+        </tr>
+        <tr>
+          <td>strikePrice</td>
+          <td>行权价</td>
+          <td>2.5</td>
+        </tr>
+
+      </tbody>
+    </table>
+    <br />
+    <table>
+      <thead id='thead'></thead>
+      <tbody id='tbody'></tbody>
+    </table>
+    <script>
+      (async () => {
+        const query = new URLSearchParams(location.search);
+        const exchangeRate = query.get('exchangeRate') ? Number.parseFloat(query.get('exchangeRate'), 10) : 6.4;
+        const minCount = query.get('minCount') ? Number.parseInt(query.get('minCount'), 10) : 1000;
+        const maxCount = query.get('maxCount') ? Number.parseInt(query.get('maxCount'), 10) : 10000;
+        const countStep = query.get('countStep') ? Number.parseInt(query.get('countStep'), 10) : 100;
+        const minUnit = query.get('minUnit') ? Number.parseInt(query.get('minUnit'), 10) : 10;
+        const maxUnit = query.get('maxUnit') ? Number.parseInt(query.get('maxUnit'), 10) : 100;
+        const strikePrice = query.get('strikePrice') ? Number.parseFloat(query.get('strikePrice'), 10) : 2.5;
+
+        const headRow = document.createElement('tr');
+        for (let unit = minUnit; unit <= maxUnit; unit += 1) {
+          const th = document.createElement('th');
+          if (unit === minUnit) {
+            th.textContent = '数量\\价格';
+          } else {
+            th.textContent = unit;
+          }
+          headRow.appendChild(th);
+        }
+        document.querySelector('#thead').appendChild(headRow);
+
+        let min = Number.MAX_SAFE_INTEGER;
+        let max = Number.MIN_SAFE_INTEGER;
+
+        for (let count = minCount; count <= maxCount; count += countStep) {
+          row = document.createElement('tr');
+          for (let unit = minUnit; unit <= maxUnit; unit += 1) {
+            const td = document.createElement('td');
+            if (row.children.length === 0) {
+              td.textContent = count;
+            } else {
+              const value = count * unit * exchangeRate;
+              let tax = 0;
+              if (value < 36000) {
+                tax = value * 0.03;
+              } else if (value < 144000) {
+                tax = 2520 + (value - 36000) * 0.1;
+              } else if (value < 300000) {
+                tax = 16920 + (value - 144000) * 0.2;
+              } else if (value < 420000) {
+                tax = 31920 + (value - 300000) * 0.25;
+              } else if (value < 660000) {
+                tax = 52920 + (value - 420000) * 0.3;
+              } else if (value < 960000) {
+                tax = 85920 + (value - 660000) * 0.35;
+              } else {
+                tax = 181920 + (value - 960000) * 0.45;
+              }
+              const rest = count - Math.ceil(tax / exchangeRate / unit) - Math.ceil((count * strikePrice) / unit);
+              const ratio = rest / count;
+              if (min > ratio) {
+                min = ratio;
+              }
+              if (max < ratio) {
+                max = ratio;
+              }
+              td.textContent = rest;
+              td.setAttribute('data-ratio', ratio);
+              // td.style.color = 'white';
+            }
+            row.appendChild(td);
+          }
+          document.querySelector('#tbody').appendChild(row);
+        }
+        document.querySelectorAll('td').forEach((td) => {
+          const ratio = td.getAttribute('data-ratio');
+          if (!ratio) {
+            return;
+          }
+          const number = Number.parseFloat(ratio, 10);
+          const color = ((number - min) / (max - min)) * 255;
+          td.style.backgroundColor = `rgb(0, ${color}, 0)`;
+        });
+      })();
+    </script>
+  </body>
+</html>
